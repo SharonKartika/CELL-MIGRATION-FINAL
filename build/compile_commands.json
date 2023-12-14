@@ -1,0 +1,27 @@
+[
+{
+  "directory": "/home/sharon/CELESTE/ACAD/CELL-MIGRATION-FINAL/build",
+  "command": "/usr/bin/g++   -g -o CMakeFiles/Cell_Migration.dir/simulation.cpp.o -c /home/sharon/CELESTE/ACAD/CELL-MIGRATION-FINAL/simulation.cpp",
+  "file": "/home/sharon/CELESTE/ACAD/CELL-MIGRATION-FINAL/simulation.cpp"
+},
+{
+  "directory": "/home/sharon/CELESTE/ACAD/CELL-MIGRATION-FINAL/build",
+  "command": "/usr/bin/g++   -g -o CMakeFiles/Cell_Migration.dir/vec2.cpp.o -c /home/sharon/CELESTE/ACAD/CELL-MIGRATION-FINAL/vec2.cpp",
+  "file": "/home/sharon/CELESTE/ACAD/CELL-MIGRATION-FINAL/vec2.cpp"
+},
+{
+  "directory": "/home/sharon/CELESTE/ACAD/CELL-MIGRATION-FINAL/build",
+  "command": "/usr/bin/g++   -g -o CMakeFiles/Cell_Migration.dir/cell.cpp.o -c /home/sharon/CELESTE/ACAD/CELL-MIGRATION-FINAL/cell.cpp",
+  "file": "/home/sharon/CELESTE/ACAD/CELL-MIGRATION-FINAL/cell.cpp"
+},
+{
+  "directory": "/home/sharon/CELESTE/ACAD/CELL-MIGRATION-FINAL/build",
+  "command": "/usr/bin/g++   -g -o CMakeFiles/Cell_Migration.dir/main.cpp.o -c /home/sharon/CELESTE/ACAD/CELL-MIGRATION-FINAL/main.cpp",
+  "file": "/home/sharon/CELESTE/ACAD/CELL-MIGRATION-FINAL/main.cpp"
+},
+{
+  "directory": "/home/sharon/CELESTE/ACAD/CELL-MIGRATION-FINAL/build",
+  "command": "/usr/bin/g++   -g -o CMakeFiles/Cell_Migration.dir/random.cpp.o -c /home/sharon/CELESTE/ACAD/CELL-MIGRATION-FINAL/random.cpp",
+  "file": "/home/sharon/CELESTE/ACAD/CELL-MIGRATION-FINAL/random.cpp"
+}
+]

@@ -17,10 +17,11 @@ DONE:
 TODO:
 - [x] Make the source an arc (instead of a line)
 - [x] Add repulsion from arc
-- [] Find the cell closest to the arc than the top one
-- [] Set distance threshold on boundarySequence construction
-- [] Add attraction between boundary cells
-- [] Fix long distance attraction
+- [x] Find the cell closest to the arc than the top one
+- [ ] Set distance threshold on boundarySequence construction
+- [x] Add attraction between boundary cells
+- [ ] Fix long distance attraction
+- [ ] add attraction of end cells to the cirlce
 */
 class Simulation
 {
@@ -53,23 +54,24 @@ public:
     int N;
 
     Simulation(int N = 70,
-               T tmax = 100, T deltat = 0.01,
+               T tmax = 30, T deltat = 0.01,
                T width = 1200, T height = 1200)
     {
         // beta = 60;
-        brt = 300;
         fov = M_PI_2;
         enterT = 0;
         enterGapT = deltat;
-        beta = 30;
+        beta = 60;
         FMaxIn = 50;
-        alpha = 0.005;
+        // alpha = 0.005; //for szabo
+        alpha = 1.42*5; // for nirgov
         ythresh = height - 50;
         // G = 30;
         circleCenter = new VEC2<T>(width / 2, height + 100);
-        maxCircleRadius = 185;
+        maxCircleRadius = 250;
         // gmax = 10;
         rt = 70;
+        brt = rt * 3;
         outfile.open("outdata.csv");
         boundaryOutfile.open("boundaryOutData.csv");
         validBoundaryOutfile.open("topBoundaryOutData.csv");
@@ -121,12 +123,12 @@ public:
                 VEC2<T> pos = *circleCenter + unit * length;
                 if (pos.y > height)
                     return;
-                T vmag = Rand<T>::getUniformRand(1, 3);
+                T vmag = Rand<T>::getUniformRand(30, 40);
                 VEC2<T> vel = unit * vmag;
                 // cell.vel.y = Rand<T>::getUniformRand(2, 4) * (-1);
                 cell.pos = pos;
                 cell.vel = vel;
-                getNeighbors(&cell, rt * 0.4);
+                getNeighbors(&cell, 30);
                 if (neighborCells.size() == 0)
                     cells.push_back(cell);
                 else
@@ -134,8 +136,23 @@ public:
             }
         }
     }
+    void setupCellField()
+    {
+        for (int i = 0; i < 400; i++)
+        {
+            Cell<T> cell;
+            T theta = Rand<T>::getUniformRand(0, M_PI * 2);
+            T length = 400 * sqrt(Rand<T>::getUnitRand());
+            VEC2<T> unit(cos(theta), sin(theta));
+            cell.pos = VEC2<T>(width / 2, height / 2) + (unit * length);
+            getNeighbors(&cell, 30.0);
+            if (neighborCells.size() == 0)
+                cells.push_back(cell);
+        }
+    }
     void simulate()
     {
+        // setupCellField();
         for (T t = 0; t < tmax; t += deltat)
         {
             // addCell(t);
@@ -152,29 +169,28 @@ public:
     void update()
     {
         // for (int i = 0; i < N; i++)
-        for (auto &cell : cells)
+        for (auto &cell : cells)//all the cells
         {
             getNeighbors(&cell, rt);
-            VEC2<T> FIn = getInteractionForceSzabo(&cell);
+            // VEC2<T> FIn = getInteractionForceSzabo(&cell);
             VEC2<T> FCircRep = getCircleRepulsiveForce(&cell);
-            // VEC2<T> FIn = getInteractionForce(&cell);
+            VEC2<T> FIn = getInteractionForce(&cell);
             VEC2<T> FVc = getVicsekForce(&cell);
             VEC2<T> FVisc = cell.vel * (-alpha);
-
-            // VEC2<T> FNo = getNoiseForce(&cell);
+            VEC2<T> FNo = getNoiseForce(&cell);
             // if (FIn.mag() > FMaxIn){
             //     FIn = FIn / FIn.mag();
             //     FIn = FIn * FMaxIn;
             // }
 
-            cell.acc += FCircRep;
-            // cell.acc += FIn;
-            cell.pos += FIn * deltat; // only for Szabo
-            cell.pos += VEC2<T>(Rand<T>::getUniformRand(-1, 1),
-                                Rand<T>::getUniformRand(-1, 1)) *
-                        0.3;
-            // cell.acc += FVc * beta;
-            // cell.acc += FNo;
+            // cell.pos += FIn * deltat; // only for Szabo
+            // cell.pos += VEC2<T>(Rand<T>::getUniformRand(-1, 1),
+            // Rand<T>::getUniformRand(-1, 1)) *
+            // 0.3;
+            cell.acc += FCircRep * 1000;
+            cell.acc += FIn;
+            cell.acc += FVc * beta;
+            cell.acc += FNo;
             cell.acc += FVisc;
         }
         calcBoundaryCells(brt, fov);
@@ -183,15 +199,17 @@ public:
         if (boundaryCellsSequence.size() >= 3)
         {
             for (int i = 1; i < boundaryCellsSequence.size() - 1; i++)
-            {
+            {//select cells
                 Cell<T> *current = boundaryCellsSequence.at(i);
                 Cell<T> *previous = boundaryCellsSequence.at(i - 1);
                 Cell<T> *next = boundaryCellsSequence.at(i + 1);
 
-                VEC2<T> FBndIn = getInteractionForceSzabo(current, previous) +
-                                 getInteractionForceSzabo(current, next);
-                FBndIn = FBndIn * 2;
-                current->pos += FBndIn * deltat;
+                // VEC2<T> FBndIn = getInteractionForceSzabo(current, previous) +
+                //                  getInteractionForceSzabo(current, next);
+                // FBndIn = FBndIn * 2;
+                // current->pos += FBndIn * deltat;
+                current->acc += boundaryAttractiveForce(current, previous) +
+                                boundaryAttractiveForce(current, next);
             }
         }
         for (auto &cell : cells)
@@ -215,23 +233,23 @@ public:
         }
         return F;
     }
-    // VEC2<T> getInteractionForce(Cell<T> *cell)
-    // {
-    //     VEC2<T> F;
-    //     for (auto neighborCell : neighborCells)
-    //     {
-    //         Cell<T> A = *cell;
-    //         Cell<T> B = *neighborCell;
-    //         VEC2<T> D(B.pos - A.pos);
-    //         T r = D.mag();
-    //         // T ifMag = interactionForceSpringLike(r);
-    //         // T ifMag = interactionForceSzabo(r);
-    //         T ifMag = interactionForceMagNirgov(r);
-    //         VEC2<T> iForce = D.unit() * ifMag;
-    //         F += iForce;
-    //     }
-    //     return F;
-    // }
+    VEC2<T> getInteractionForce(Cell<T> *cell)
+    {
+        VEC2<T> F;
+        for (auto neighborCell : neighborCells)
+        {
+            Cell<T> A = *cell;
+            Cell<T> B = *neighborCell;
+            VEC2<T> D(B.pos - A.pos);
+            T r = D.mag();
+            // T ifMag = interactionForceSpringLike(r);
+            // T ifMag = interactionForceSzabo(r);
+            T ifMag = interactionForceMagNirgov(r);
+            VEC2<T> iForce = D.unit() * ifMag;
+            F += iForce;
+        }
+        return F;
+    }
     VEC2<T> getCircleRepulsiveForce(Cell<T> *cell)
     {
         VEC2<T> D = cell->pos - *circleCenter;
@@ -252,8 +270,8 @@ public:
             FVc += dv;
             ninr++;
         }
-        if (ninr == 1)
-        { // no neighbors except self
+        if (ninr == 0)
+        {
             return VEC2<T>(0, 0);
         }
         else
@@ -275,9 +293,11 @@ public:
     }
     VEC2<T> getNoiseForce(Cell<T> *cell)
     {
-        T sig0 = 150.,
-          sig1 = 300.,
-          rho0 = N / (width * height),
+        T sig1 = 300., // density dependent noise
+            sig0 = 150.,
+          // sig0 = sig1,
+          //   rho0 = N / (width * height),
+            rho0 = 4e-3,
           rho = 0.,
           sig = 0.,
           tau = 1.39;
@@ -286,7 +306,7 @@ public:
         sig = sig0 + (sig1 - sig0) * (1 - rho / rho0);
         // integrate and normalize
         cell->eta -= cell->eta * deltat / tau;
-        cell->eta += xi * sqrt(deltat) / tau;
+        cell->eta += xi * sqrt(deltat) / tau;//euler maruyama
         cell->eta = cell->eta / cell->eta.mag();
         return cell->eta * sig;
     }
@@ -406,7 +426,7 @@ public:
         topCell = bcells.at(0);
         for (auto &cell : bcells)
         {
-            if (cell->pos.x > topCell->pos.x)
+            if (cell->pos.y > topCell->pos.y)
             {
                 topCell = cell;
             }
@@ -488,7 +508,19 @@ public:
     //         }
     //     }
     // }
-
+    Cell<T> *getCellClosestToCirlce(std::vector<Cell<T> *> &bcells)
+    {
+        Cell<T> *closestCell;
+        closestCell = bcells.at(0);
+        for (auto &cell : bcells)
+        {
+            if ((cell->pos - *circleCenter).mag() < (closestCell->pos - *circleCenter).mag())
+            {
+                closestCell = cell;
+            }
+        }
+        return closestCell;
+    }
     // void calcBoundaryCellsSequence(std::vector<Cell<T> *> bcells)
     // { // semi-final working
     //     boundaryCellsSequence.clear();
@@ -513,14 +545,14 @@ public:
         boundaryCellsSequence.clear();
         if (bcells.size() > 10)
         { // find top most cell
-            auto topCell = gettopCell(bcells);
+            auto topCell = getCellClosestToCirlce(bcells);
             boundaryCellsSequence.push_back(topCell);
             removeElement(bcells, topCell);
             auto currentCell = topCell;
             // find closest cell
             while (bcells.size() > 0)
             {
-                getbNeighbors(currentCell, bcells, 600);
+                getbNeighbors(currentCell, bcells, rt * 4);
                 if (bNeighborCells.size() == 0)
                     break;
                 auto nearestCell = getNearestCell(currentCell, bNeighborCells);
@@ -567,7 +599,26 @@ public:
             }
         }
     }
+    VEC2<T> boundaryAttractiveForce(Cell<T> *a, Cell<T> *b)
+    {
+        VEC2<T> D = (a->pos - b->pos);
+        T r = D.mag();
+        // T req = 10,
+        T req = rt,
+          maxrep = 3000,
+          maxadh = -1200,
+          rmax = rt * 2,
+          Fmag;
 
+        if (r < req)
+            Fmag = ((maxadh - maxrep) / req) * r + maxrep;
+        else if (r < rmax)
+            Fmag = ((-maxadh) / (rmax - req)) * (r - req) + (maxadh);
+        else
+            Fmag = 0;
+        // std::cout << Fmag << " ";
+        return D.unit() * Fmag ;
+    }
     void removeElement(std::vector<Cell<T> *> &bcells, Cell<T> *currentCell)
     {
         for (int i = 0; i < bcells.size(); i++)
@@ -669,7 +720,6 @@ public:
 
         return -Fmag;
     }
-
     T gravityForceMag(T r)
     {
         return (G / r);
